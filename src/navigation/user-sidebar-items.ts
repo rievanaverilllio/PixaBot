@@ -52,12 +52,12 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         title: "PixaChat",
-        url: "/",
+        url: "/dashboard/pixachat",
         icon: LayoutDashboard,
       },
       {
         title: "Token Dashboard",
-        url: "/token-dashboard",
+        url: "/dashboard/token-dashboard",
         icon: Banknote,
       },
     ],
@@ -68,37 +68,37 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         title: "Beli Token",
-        url: "/buy-token",
+        url: "/dashboard/buy-token",
         icon: Banknote,
       },
       {
         title: "Top-up / Pembayaran",
-        url: "/payments",
+        url: "/dashboard/payments",
         icon: ReceiptText,
       },
       {
         title: "Riwayat & Tagihan",
-        url: "/history",
+        url: "/dashboard/history",
         icon: FileText,
       },
       {
         title: "API & Kunci",
-        url: "/api-keys",
+        url: "/dashboard/api-keys",
         icon: Fingerprint,
       },
       {
         title: "Bantuan & Dokumentasi",
-        url: "/help",
+        url: "/dashboard/help",
         icon: FileText,
       },
       {
         title: "Kebijakan Privasi",
-        url: "/privacy",
+        url: "/dashboard/privacy",
         icon: Lock,
       },
       {
         title: "Pengaturan Akun",
-        url: "/settings",
+        url: "/dashboard/settings",
         icon: Settings,
       },
     ],
