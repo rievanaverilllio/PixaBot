@@ -3,11 +3,22 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Loader2, Send, Trash2, Image as ImageIcon, Check, MoreHorizontal } from "lucide-react";
+import { Loader2, Send, Trash2, Image as ImageIcon, Check, MoreHorizontal, Key } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -56,6 +67,9 @@ export function ChatBot() {
   const [isSending, setIsSending] = React.useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
   const [imageToolEnabled, setImageToolEnabled] = React.useState(false);
+  const [customApiKey, setCustomApiKey] = React.useState<string>("");
+  const [apiKeyModalOpen, setApiKeyModalOpen] = React.useState(false);
+  const [apiKeyDraft, setApiKeyDraft] = React.useState("");
 
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -70,6 +84,53 @@ export function ChatBot() {
     return () => {
       document.body.style.overflow = prev;
     };
+  }, []);
+
+  React.useEffect(() => {
+    try {
+      const k = localStorage.getItem("pixabot.mistralApiKey");
+      if (k) setCustomApiKey(k);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleOpenApiKeyModal = React.useCallback(() => {
+    setApiKeyDraft(customApiKey ?? "");
+    setApiKeyModalOpen(true);
+  }, [customApiKey]);
+
+  const handleSaveApiKey = React.useCallback(() => {
+    try {
+      const t = (apiKeyDraft ?? "").trim();
+      if (!t) {
+        localStorage.removeItem("pixabot.mistralApiKey");
+        setCustomApiKey("");
+      } else {
+        localStorage.setItem("pixabot.mistralApiKey", t);
+        setCustomApiKey(t);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setApiKeyModalOpen(false);
+    }
+  }, [apiKeyDraft]);
+
+  const handleCancelApiKey = React.useCallback(() => {
+    setApiKeyModalOpen(false);
+  }, []);
+
+  const handleClearApiKey = React.useCallback(() => {
+    try {
+      localStorage.removeItem("pixabot.mistralApiKey");
+      setCustomApiKey("");
+      setApiKeyDraft("");
+    } catch {
+      // ignore
+    } finally {
+      setApiKeyModalOpen(false);
+    }
   }, []);
 
   const sendMessage = React.useCallback(async () => {
@@ -88,9 +149,12 @@ export function ChatBot() {
     setMessages((prev) => [...prev, userMsg]);
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (customApiKey) headers["x-mistral-api-key"] = customApiKey;
+
       const res = await fetch("/api/pixachat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
         }),
@@ -122,7 +186,7 @@ export function ChatBot() {
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, messages]);
+  }, [input, isSending, messages, customApiKey]);
 
   const generateImage = React.useCallback(async () => {
     let prompt = sanitizeInput(input);
@@ -154,9 +218,12 @@ export function ChatBot() {
     setMessages((prev) => [...prev, userMsg, loadingMsg]);
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (customApiKey) headers["x-mistral-api-key"] = customApiKey;
+
       const res = await fetch("/api/pixachat/image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ prompt }),
       });
 
@@ -185,7 +252,7 @@ export function ChatBot() {
       setIsGeneratingImage(false);
       setInput("");
     }
-  }, [input]);
+  }, [input, customApiKey]);
 
   const onKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -214,11 +281,38 @@ export function ChatBot() {
 
   return (
     <Card className="relative @container/card min-h-[min(80vh,900px)] border-0">
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-50 pointer-events-auto">
+        <Button type="button" variant="outline" size="icon" onClick={handleOpenApiKeyModal} aria-label="Set API key">
+          <Key className="size-4" />
+        </Button>
         <Button type="button" variant="outline" size="icon" onClick={clearChat} aria-label="Clear chat">
           <Trash2 className="size-4" />
         </Button>
       </div>
+      <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Masukkan Mistral API Key</DialogTitle>
+            <DialogDescription>Masukkan API key Mistral Anda. Kosongkan untuk menghapus.</DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2">
+            <Input
+              value={apiKeyDraft}
+              onChange={(e) => setApiKeyDraft(e.target.value)}
+              placeholder="MISTRAL_API_KEY"
+            />
+          </div>
+
+          <DialogFooter>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={handleCancelApiKey}>Batal</Button>
+              <Button onClick={handleSaveApiKey}>Simpan</Button>
+              <Button variant="outline" onClick={handleClearApiKey}>Hapus</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CardContent className="flex h-full flex-col gap-4">
         <ScrollArea className="h-[min(68vh,800px)] rounded-md border-0 overscroll-contain">
@@ -237,7 +331,11 @@ export function ChatBot() {
                 {m.imageUrl ? (
                   <div className="mt-2">
                     <a href={m.imageUrl} target="_blank" rel="noopener noreferrer">
-                      <img src={m.imageUrl} alt="generated" className="max-w-full rounded-md shadow-sm" />
+                      <img
+                        src={m.imageUrl}
+                        alt="generated"
+                        className="max-w-[360px] max-h-[360px] w-auto h-auto rounded-md shadow-sm object-contain"
+                      />
                     </a>
                     <div className="mt-1 text-xs text-muted-foreground">
                       <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" className="underline">

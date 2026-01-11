@@ -70,13 +70,13 @@ async function openAiReply(messages: InboundMessage[]) {
   return content || null;
 }
 
-async function mistralReply(messages: InboundMessage[]) {
-  const apiKey = process.env.MISTRAL_API_KEY;
-  const url = process.env.MISTRAL_API_URL;
+async function mistralReply(messages: InboundMessage[], override?: { apiKey?: string; url?: string; model?: string }) {
+  const apiKey = override?.apiKey ?? process.env.MISTRAL_API_KEY;
+  const url = override?.url ?? process.env.MISTRAL_API_URL;
   if (!apiKey || !url) return null;
 
   // Mistral's chat completions expects a model; provide a sensible default.
-  const model = process.env.MISTRAL_MODEL;
+  const model = override?.model ?? process.env.MISTRAL_MODEL;
 
   const hasSystem = messages.some((m) => m.role === "system");
   const system: InboundMessage = {
@@ -124,8 +124,16 @@ export async function POST(req: Request) {
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
-  // 1) Try Mistral if configured
-  const mistral = await mistralReply(messages);
+  // Check for runtime overrides provided by the client (headers or body)
+  const headerApiKey = (req.headers && (req.headers as any).get ? (req.headers as any).get("x-mistral-api-key") : null) || undefined;
+  const headerApiUrl = (req.headers && (req.headers as any).get ? (req.headers as any).get("x-mistral-api-url") : null) || undefined;
+  const headerModel = (req.headers && (req.headers as any).get ? (req.headers as any).get("x-mistral-model") : null) || undefined;
+
+  const mistral = await mistralReply(messages, {
+    apiKey: headerApiKey ?? (body as any).apiKey,
+    url: headerApiUrl ?? (body as any).mistralUrl,
+    model: headerModel ?? (body as any).mistralModel,
+  });
   if (mistral) return NextResponse.json({ reply: sanitizeReply(mistral) });
 
   // 2) Try OpenAI if configured (optional fallback)
