@@ -4,9 +4,9 @@ import { Briefcase, ImageIcon, Zap } from "lucide-react";
 
 export default function UseCases() {
   const cases = [
-    { icon: <Briefcase className="h-6 w-6 text-sky-600" />, title: "Customer support", desc: "Automate responses, summarize threads, and surface suggested images for agents." },
-    { icon: <ImageIcon className="h-6 w-6 text-amber-500" />, title: "Content & Design", desc: "Generate on-brand imagery, variant mockups, and creative assets programmatically." },
-    { icon: <Zap className="h-6 w-6 text-indigo-600" />, title: "Productivity", desc: "Context-aware automations: summarize, extract actions, and trigger workflows." },
+    { icon: <Briefcase className="h-6 w-6 text-sky-600" />, title: "Customer support", desc: "Automate responses, summarize threads, and surface suggested images for agents.", href: "/use-cases/customer-support" },
+    { icon: <ImageIcon className="h-6 w-6 text-amber-500" />, title: "Content & Design", desc: "Generate on-brand imagery, variant mockups, and creative assets programmatically.", href: "/use-cases/content-design" },
+    { icon: <Zap className="h-6 w-6 text-indigo-600" />, title: "Productivity", desc: "Context-aware automations: summarize, extract actions, and trigger workflows.", href: "/use-cases/productivity" },
   ];
 
   return (
@@ -34,7 +34,7 @@ export default function UseCases() {
                   <div className="font-semibold">{c.title}</div>
                   <div className="mt-2 text-sm text-muted-foreground">{c.desc}</div>
                   <div className="mt-4">
-                    <a href="/help" className="text-sm underline">Learn more</a>
+                    <a href={c.href} className="text-sm underline">Learn more</a>
                   </div>
                 </div>
               </div>

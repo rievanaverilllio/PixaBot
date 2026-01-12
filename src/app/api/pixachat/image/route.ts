@@ -57,11 +57,8 @@ async function fetchImageAsDataUrl(url: string) {
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Body;
   const prompt = (body.prompt ?? "").toString();
-
-  const endpoint = process.env.ENDPOINT_GENERETE_IMAGE;
-  if (!endpoint) {
-    return NextResponse.json({ error: "Image endpoint not configured." }, { status: 500 });
-  }
+  const headerEndpoint = (req.headers && (req.headers as any).get ? (req.headers as any).get("x-image-endpoint") : null) ?? undefined;
+  const endpoint = headerEndpoint ?? (body as any).endpoint ?? process.env.ENDPOINT_GENERETE_IMAGE ?? "https://image.pollinations.ai/prompt/YOUR_PROMPT_HERE";
 
   const url = buildUrl(endpoint, prompt);
   if (!url) return NextResponse.json({ error: "Invalid endpoint." }, { status: 500 });

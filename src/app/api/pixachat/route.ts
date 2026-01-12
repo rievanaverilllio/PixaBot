@@ -72,11 +72,12 @@ async function openAiReply(messages: InboundMessage[]) {
 
 async function mistralReply(messages: InboundMessage[], override?: { apiKey?: string; url?: string; model?: string }) {
   const apiKey = override?.apiKey ?? process.env.MISTRAL_API_KEY;
-  const url = override?.url ?? process.env.MISTRAL_API_URL;
+  // Default to Mistral public endpoint if not configured in env or override
+  const url = override?.url ?? process.env.MISTRAL_API_URL ?? "https://api.mistral.ai/v1/chat/completions";
   if (!apiKey || !url) return null;
 
   // Mistral's chat completions expects a model; provide a sensible default.
-  const model = override?.model ?? process.env.MISTRAL_MODEL;
+  const model = override?.model ?? process.env.MISTRAL_MODEL ?? "mistral-large-latest";
 
   const hasSystem = messages.some((m) => m.role === "system");
   const system: InboundMessage = {
@@ -129,11 +130,21 @@ export async function POST(req: Request) {
   const headerApiUrl = (req.headers && (req.headers as any).get ? (req.headers as any).get("x-mistral-api-url") : null) || undefined;
   const headerModel = (req.headers && (req.headers as any).get ? (req.headers as any).get("x-mistral-model") : null) || undefined;
 
+  const overrideApiKey = headerApiKey ?? (body as any).apiKey ?? undefined;
+  const overrideUrl = headerApiUrl ?? (body as any).mistralUrl ?? undefined;
+  const overrideModel = headerModel ?? (body as any).mistralModel ?? undefined;
+
   const mistral = await mistralReply(messages, {
-    apiKey: headerApiKey ?? (body as any).apiKey,
-    url: headerApiUrl ?? (body as any).mistralUrl,
-    model: headerModel ?? (body as any).mistralModel,
+    apiKey: overrideApiKey,
+    url: overrideUrl,
+    model: overrideModel,
   });
+
+  // If client explicitly provided an API key/url/model and Mistral failed, surface an error
+  if ((overrideApiKey || overrideUrl || overrideModel) && !mistral) {
+    return NextResponse.json({ reply: "Gagal menghubungi Mistral. Periksa API key atau endpoint yang dimasukkan." }, { status: 502 });
+  }
+
   if (mistral) return NextResponse.json({ reply: sanitizeReply(mistral) });
 
   // 2) Try OpenAI if configured (optional fallback)

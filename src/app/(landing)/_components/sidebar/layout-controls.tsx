@@ -22,7 +22,7 @@ import { THEME_PRESET_OPTIONS, type ThemeMode, type ThemePreset } from "@/lib/pr
 import { applyThemePreset } from "@/lib/preferences/theme-utils";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
-export function LayoutControls() {
+export function LayoutControls({ hideLayoutOptions = false }: { hideLayoutOptions?: boolean }) {
   const themeMode = usePreferencesStore((s) => s.themeMode);
   const resolvedThemeMode = usePreferencesStore((s) => s.resolvedThemeMode);
   const setThemeMode = usePreferencesStore((s) => s.setThemeMode);
@@ -173,80 +173,84 @@ export function LayoutControls() {
               </ToggleGroup>
             </div>
 
-            <div className="space-y-1">
-              <Label className="font-medium text-xs">Page Layout</Label>
-              <ToggleGroup
-                size="sm"
-                variant="outline"
-                type="single"
-                value={contentLayout}
-                onValueChange={onContentLayoutChange}
-              >
-                <ToggleGroupItem value="centered" aria-label="Toggle centered">
-                  Centered
-                </ToggleGroupItem>
-                <ToggleGroupItem value="full-width" aria-label="Toggle full-width">
-                  Full Width
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+            {!hideLayoutOptions && (
+              <>
+                <div className="space-y-1">
+                  <Label className="font-medium text-xs">Page Layout</Label>
+                  <ToggleGroup
+                    size="sm"
+                    variant="outline"
+                    type="single"
+                    value={contentLayout}
+                    onValueChange={onContentLayoutChange}
+                  >
+                    <ToggleGroupItem value="centered" aria-label="Toggle centered">
+                      Centered
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="full-width" aria-label="Toggle full-width">
+                      Full Width
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
 
-            <div className="space-y-1">
-              <Label className="font-medium text-xs">Navbar Behavior</Label>
-              <ToggleGroup
-                size="sm"
-                variant="outline"
-                type="single"
-                value={navbarStyle}
-                onValueChange={onNavbarStyleChange}
-              >
-                <ToggleGroupItem value="sticky" aria-label="Toggle sticky">
-                  Sticky
-                </ToggleGroupItem>
-                <ToggleGroupItem value="scroll" aria-label="Toggle scroll">
-                  Scroll
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+                <div className="space-y-1">
+                  <Label className="font-medium text-xs">Navbar Behavior</Label>
+                  <ToggleGroup
+                    size="sm"
+                    variant="outline"
+                    type="single"
+                    value={navbarStyle}
+                    onValueChange={onNavbarStyleChange}
+                  >
+                    <ToggleGroupItem value="sticky" aria-label="Toggle sticky">
+                      Sticky
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="scroll" aria-label="Toggle scroll">
+                      Scroll
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
 
-            <div className="space-y-1">
-              <Label className="font-medium text-xs">Sidebar Style</Label>
-              <ToggleGroup
-                size="sm"
-                variant="outline"
-                type="single"
-                value={variant}
-                onValueChange={onSidebarStyleChange}
-              >
-                <ToggleGroupItem value="inset" aria-label="Toggle inset">
-                  Inset
-                </ToggleGroupItem>
-                <ToggleGroupItem value="sidebar" aria-label="Toggle sidebar">
-                  Sidebar
-                </ToggleGroupItem>
-                <ToggleGroupItem value="floating" aria-label="Toggle floating">
-                  Floating
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+                <div className="space-y-1">
+                  <Label className="font-medium text-xs">Sidebar Style</Label>
+                  <ToggleGroup
+                    size="sm"
+                    variant="outline"
+                    type="single"
+                    value={variant}
+                    onValueChange={onSidebarStyleChange}
+                  >
+                    <ToggleGroupItem value="inset" aria-label="Toggle inset">
+                      Inset
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="sidebar" aria-label="Toggle sidebar">
+                      Sidebar
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="floating" aria-label="Toggle floating">
+                      Floating
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
 
-            <div className="space-y-1">
-              <Label className="font-medium text-xs">Sidebar Collapse Mode</Label>
-              <ToggleGroup
-                size="sm"
-                variant="outline"
-                type="single"
-                value={collapsible}
-                onValueChange={onSidebarCollapseModeChange}
-              >
-                <ToggleGroupItem value="icon" aria-label="Toggle icon">
-                  Icon
-                </ToggleGroupItem>
-                <ToggleGroupItem value="offcanvas" aria-label="Toggle offcanvas">
-                  OffCanvas
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+                <div className="space-y-1">
+                  <Label className="font-medium text-xs">Sidebar Collapse Mode</Label>
+                  <ToggleGroup
+                    size="sm"
+                    variant="outline"
+                    type="single"
+                    value={collapsible}
+                    onValueChange={onSidebarCollapseModeChange}
+                  >
+                    <ToggleGroupItem value="icon" aria-label="Toggle icon">
+                      Icon
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="offcanvas" aria-label="Toggle offcanvas">
+                      OffCanvas
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              </>
+            )}
 
             <Button type="button" size="sm" variant="outline" className="w-full" onClick={handleRestore}>
               Restore Defaults

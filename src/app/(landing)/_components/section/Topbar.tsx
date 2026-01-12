@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ThemeSwitcher } from "@/app/(user)/dashboard/_components/sidebar/theme-switcher";
-import { LayoutControls } from "@/app/(user)/dashboard/_components/sidebar/layout-controls";
+import { ThemeSwitcher } from "@/app/(landing)/_components/sidebar/theme-switcher";
+import { LayoutControls } from "@/app/(landing)/_components/sidebar/layout-controls";
 
 export default function Topbar() {
   return (
@@ -22,7 +22,7 @@ export default function Topbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          <LayoutControls />
+          <LayoutControls hideLayoutOptions />
           <ThemeSwitcher />
 
           <Link href="/privacy" className="text-sm text-muted-foreground hidden sm:inline">Privacy</Link>
