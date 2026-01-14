@@ -189,9 +189,6 @@ These serve as the fallback; there is no separate default.css file. */
   html[data-font="nunito"] body {
     --font-sans: var(--font-nunito);
   }
-  html[data-font="gabriela"] body {
-    --font-sans: var(--font-gabriela);
-  }
   html[data-font="outfit"] body {
     --font-sans: var(--font-outfit);
   }
@@ -201,9 +198,7 @@ These serve as the fallback; there is no separate default.css file. */
   html[data-font="dmSans"] body {
     --font-sans: var(--font-dm-sans);
   }
-  html[data-font="greatVibes"] body {
-    --font-sans: var(--font-great-vibes);
-  }
+
 }
 
 html {

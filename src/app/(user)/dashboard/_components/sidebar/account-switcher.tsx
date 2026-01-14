@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 import { BadgeCheck, Bell, CreditCard, LogOut } from "lucide-react";
 
@@ -27,6 +29,17 @@ export function AccountSwitcher({
   }>;
 }) {
   const [activeUser, setActiveUser] = useState(users[0]);
+  const router = useRouter();
+
+  const toTitleCase = (s: string) =>
+    s
+      .trim()
+      .split(/\s+/)
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ""))
+      .join(" ");
+
+  const displayNameFor = (name?: string) => (name && name.trim() ? toTitleCase(name) : "Unnamed");
+  const initialsFor = (name?: string) => (name && name.trim() ? getInitials(toTitleCase(name)) : "UN");
 
   return (
     <DropdownMenu>
@@ -45,11 +58,11 @@ export function AccountSwitcher({
           >
             <div className="flex w-full items-center justify-between gap-2 px-1 py-1.5">
               <Avatar className="size-9 rounded-lg">
-                <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
+                <AvatarImage src={user.avatar || undefined} alt={displayNameFor(user.name)} />
+                <AvatarFallback className="rounded-lg">{initialsFor(user.name)}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate font-semibold">{displayNameFor(user.name)}</span>
                 <span className="truncate text-xs capitalize">{user.role}</span>
               </div>
             </div>
@@ -57,11 +70,11 @@ export function AccountSwitcher({
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
             <BadgeCheck />
             Account
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/dashboard/token-dashboard")}>
             <CreditCard />
             Billing
           </DropdownMenuItem>
@@ -71,7 +84,10 @@ export function AccountSwitcher({
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => {
+          e.preventDefault();
+          signOut({ callbackUrl: "/" });
+        }}>
           <LogOut />
           Log out
         </DropdownMenuItem>

@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String?
+  image         String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+
+  // Dashboard domain data
+  settings         UserSettings?
+  wallet           TokenWallet?
+  transactions     TokenTransaction[]
+  usageEvents      UsageEvent[]
+  apiKeys          ApiKey[]
+  invoices         Invoice[]
+  payments         Payment[]
+  paymentMethods   PaymentMethod[]
+  chatThreads      ChatThread[]
+  imageGenerations ImageGeneration[]
+}
+
+enum UsageKind {
+  chat
+  image
+  api
+}
+
+enum TokenTransactionType {
+  topup
+  purchase
+  usage
+  refund
+  adjustment
+}
+
+enum InvoiceStatus {
+  draft
+  pending
+  paid
+  void
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+  canceled
+}
+
+enum ChatMessageRole {
+  user
+  assistant
+  system
+}
+
+model UserSettings {
+  userId               Int     @id
+  twoFaEnabled         Boolean @default(false)
+  notificationsEnabled Boolean @default(true)
+  language             String?
+  timezone             String?
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TokenWallet {
+  userId    Int      @id
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TokenTransaction {
+  id        Int                  @id @default(autoincrement())
+  userId    Int
+  type      TokenTransactionType
+  amount    Int
+  note      String?
+  metadata  Json?
+  createdAt DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model UsageEvent {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  kind      UsageKind
+  action    String?
+  tokens    Int       @default(0)
+  createdAt DateTime  @default(now())
+  metadata  Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+}
+
+model ApiKey {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  name       String
+  // A short prefix for UI display (e.g. "sk-...1234")
+  prefix     String
+  // Store only a hash of the secret key (never store plaintext)
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId, createdAt])
+}
+
+model Invoice {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  number      String        @unique
+  status      InvoiceStatus @default(pending)
+  amountCents Int
+  currency    String        @default("USD")
+  pdfUrl      String?
+  issuedAt    DateTime      @default(now())
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId, issuedAt])
+}
+
+model PaymentMethod {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  label            String
+  type             String
+  last4            String?
+  isPrimary        Boolean  @default(false)
+  provider         String?
+  providerMethodId String?
+  status           String?
+  createdAt        DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  userId        Int
+  invoiceId     Int?
+  methodId      Int?
+  provider      String?
+  providerRef   String?
+  status        PaymentStatus @default(pending)
+  amountCents   Int
+  currency      String        @default("USD")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  method PaymentMethod? @relation(fields: [methodId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model ChatThread {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        Int             @id @default(autoincrement())
+  threadId  Int
+  role      ChatMessageRole
+  content   String          @db.Text
+  imageUrl  String?
+  tokens    Int?
+  createdAt DateTime        @default(now())
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+}
+
+model ImageGeneration {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  prompt    String   @db.Text
+  imageUrl  String
+  tokens    Int?
+  createdAt DateTime @default(now())
+  metadata  Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Account {
+  id                 Int     @id @default(autoincrement())
+  userId             Int
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+

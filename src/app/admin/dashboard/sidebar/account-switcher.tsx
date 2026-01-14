@@ -27,13 +27,22 @@ export function AccountSwitcher({
   }>;
 }) {
   const [activeUser, setActiveUser] = useState(users[0]);
+  const toTitleCase = (s: string) =>
+    s
+      .trim()
+      .split(/\s+/)
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ""))
+      .join(" ");
+
+  const displayNameFor = (name?: string) => (name && name.trim() ? toTitleCase(name) : "Unnamed");
+  const initialsFor = (name?: string) => (name && name.trim() ? getInitials(toTitleCase(name)) : "UN");
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild>
         <Avatar className="size-9 rounded-lg">
-          <AvatarImage src={activeUser.avatar || undefined} alt={activeUser.name} />
-          <AvatarFallback className="rounded-lg">{getInitials(activeUser.name)}</AvatarFallback>
+          <AvatarImage src={activeUser.avatar || undefined} alt={displayNameFor(activeUser.name)} />
+          <AvatarFallback className="rounded-lg">{initialsFor(activeUser.name)}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-56 space-y-1 rounded-lg" side="bottom" align="end" sideOffset={4}>
@@ -44,12 +53,12 @@ export function AccountSwitcher({
             onClick={() => setActiveUser(user)}
           >
             <div className="flex w-full items-center justify-between gap-2 px-1 py-1.5">
-              <Avatar className="size-9 rounded-lg">
-                <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
+                <Avatar className="size-9 rounded-lg">
+                <AvatarImage src={user.avatar || undefined} alt={displayNameFor(user.name)} />
+                <AvatarFallback className="rounded-lg">{initialsFor(user.name)}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate font-semibold">{displayNameFor(user.name)}</span>
                 <span className="truncate text-xs capitalize">{user.role}</span>
               </div>
             </div>

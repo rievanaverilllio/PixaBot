@@ -1,5 +1,13 @@
 export const users = [
   {
+    id: "3",
+    name: "Rievan",
+    username: "rievan",
+    email: "rievan@example.com",
+    avatar: "https://i.pravatar.cc/150?u=rievan",
+    role: "User",
+  },
+  {
     id: "1",
     name: "Arham Khan",
     username: "Aarhamkhnz",

@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,11 +13,99 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Edit2, CreditCard, Key, ShieldCheck, Trash2, User, Mail, Zap } from "lucide-react";
 
+type SettingsResponse = {
+  profile: { name: string; email: string; image: string | null };
+  settings: { twoFaEnabled: boolean; notificationsEnabled: boolean; language: string | null; timezone: string | null };
+  billing: { tokenBalance: number; lastTopupAt: string | null };
+};
+
 export default function SettingsPage() {
-  const [name, setName] = useState("User Name");
-  const [email, setEmail] = useState("user@example.com");
+  const router = useRouter();
+  const { status } = useSession();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [twoFa, setTwoFa] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [language, setLanguage] = useState<string>("");
+  const [timezone, setTimezone] = useState<string>("");
+
+  const [tokenBalance, setTokenBalance] = useState<number>(0);
+  const [lastTopupAt, setLastTopupAt] = useState<string | null>(null);
+
+  const initials = useMemo(() => {
+    const trimmed = (name ?? "").trim();
+    if (!trimmed) return "UN";
+    const parts = trimmed.split(/\s+/).slice(0, 2);
+    return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "UN";
+  }, [name]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/v2/login");
+      return;
+    }
+    if (status !== "authenticated") return;
+
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch("/api/user/settings", { method: "GET" });
+        const json = (await res.json().catch(() => null)) as SettingsResponse | { error?: string } | null;
+        if (!res.ok) throw new Error((json as any)?.error || "Failed to load settings");
+
+        if (cancelled) return;
+        const data = json as SettingsResponse;
+        setName(data.profile.name ?? "");
+        setEmail(data.profile.email ?? "");
+        setAvatar(data.profile.image ?? null);
+        setTwoFa(Boolean(data.settings.twoFaEnabled));
+        setNotifications(Boolean(data.settings.notificationsEnabled));
+        setLanguage(data.settings.language ?? "");
+        setTimezone(data.settings.timezone ?? "");
+        setTokenBalance(Number(data.billing.tokenBalance ?? 0));
+        setLastTopupAt(data.billing.lastTopupAt ?? null);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load settings");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, router]);
+
+  const saveAll = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/user/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          twoFaEnabled: twoFa,
+          notificationsEnabled: notifications,
+          language,
+          timezone,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error || "Failed to save settings");
+      toast.success("Settings saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="p-6">
@@ -25,24 +116,26 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground">Kelola profil, keamanan, pembayaran, dan integrasi API Anda.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/api-keys">
+            <Link href="/dashboard/api-keys">
               <Button variant="outline">Kelola API</Button>
             </Link>
-            <Button>Save All</Button>
+            <Button onClick={saveAll} disabled={isLoading || isSaving}>
+              {isSaving ? "Saving..." : "Save All"}
+            </Button>
           </div>
         </header>
 
         <div className="grid gap-6 md:grid-cols-3">
           {/* Profile Card */}
-          <Card className="min-h-[220px]">
+          <Card className="min-h-55">
             <CardHeader>
               <CardTitle>Profil</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center text-center">
                 <Avatar className="w-24 h-24">
-                  <AvatarImage src="/media/avatar-placeholder.png" alt="avatar" />
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarImage src={avatar || undefined} alt={name || "avatar"} />
+                  <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div className="mt-3 w-full">
                   <Label>Nama Lengkap</Label>
@@ -51,8 +144,17 @@ export default function SettingsPage() {
                   <Input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2" />
                 </div>
                 <div className="mt-4 flex gap-2">
-                  <Button variant="outline"><Edit2 className="mr-2" />Ubah Profil</Button>
-                  <Button>Unggah Avatar</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => toast.message("Ubah Profil", { description: "Gunakan tombol Save All untuk menyimpan perubahan." })}
+                  >
+                    <Edit2 className="mr-2" />Ubah Profil
+                  </Button>
+                  <Button
+                    onClick={() => toast.message("Unggah Avatar", { description: "Belum diaktifkan. Nanti bisa kita tambah upload ke storage." })}
+                  >
+                    Unggah Avatar
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -115,14 +217,16 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm text-muted-foreground">Saldo Token</div>
-                    <div className="text-2xl font-semibold mt-1">1,250</div>
-                    <div className="text-sm text-muted-foreground mt-1">Terakhir top-up: 5 Jan 2026</div>
+                    <div className="text-2xl font-semibold mt-1 tabular-nums">{tokenBalance.toLocaleString("id-ID")}</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Terakhir top-up: {lastTopupAt ? new Date(lastTopupAt).toLocaleDateString("id-ID") : "-"}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Link href="/buy-token">
+                    <Link href="/dashboard/buy-token">
                       <Button>Top Up</Button>
                     </Link>
-                    <Link href="/payments">
+                    <Link href="/dashboard/payments">
                       <Button variant="outline"><CreditCard className="mr-2" />Pembayaran</Button>
                     </Link>
                   </div>
@@ -179,11 +283,11 @@ export default function SettingsPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label>Bahasa</Label>
-                    <Input placeholder="Bahasa (ID)" className="mt-2" />
+                    <Input placeholder="Bahasa (ID)" className="mt-2" value={language} onChange={(e) => setLanguage(e.target.value)} />
                   </div>
                   <div>
                     <Label>Zona Waktu</Label>
-                    <Input placeholder="Asia/Jakarta" className="mt-2" />
+                    <Input placeholder="Asia/Jakarta" className="mt-2" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
                   </div>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground">Perubahan preferensi akan diterapkan segera setelah Anda menyimpan.</div>

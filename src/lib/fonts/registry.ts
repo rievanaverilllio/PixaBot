@@ -1,9 +1,7 @@
 import {
   DM_Sans,
-  Gabriela,
   Geist,
   Geist_Mono,
-  Great_Vibes,
   Inter,
   Manrope,
   Nunito,
@@ -60,22 +58,12 @@ const nunito = Nunito({
   variable: "--font-nunito",
 });
 
-const gabriela = Gabriela({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-gabriela",
-});
-
 const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
 });
 
-const greatVibes = Great_Vibes({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-great-vibes",
-});
+// Gabriela and Great Vibes removed due to Turbopack font loader compatibility
 
 export const fontRegistry = {
   inter: {
@@ -106,10 +94,6 @@ export const fontRegistry = {
     label: "Nunito",
     font: nunito,
   },
-  gabriela: {
-    label: "Gabriela",
-    font: gabriela,
-  },
   outfit: {
     label: "Outfit",
     font: outfit,
@@ -122,10 +106,7 @@ export const fontRegistry = {
     label: "DM Sans",
     font: dmSans,
   },
-  greatVibes: {
-    label: "Great Vibes",
-    font: greatVibes,
-  },
+  
 } as const;
 
 export type FontKey = keyof typeof fontRegistry;

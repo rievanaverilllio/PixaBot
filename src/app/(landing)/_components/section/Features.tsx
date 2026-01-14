@@ -30,9 +30,7 @@ export default function Features() {
                   <div className="font-semibold text-lg">{it.title}</div>
                   <div className="text-sm mt-1 text-muted-foreground">{it.lead}</div>
                   <div className="mt-3 text-sm text-muted-foreground">{it.desc}</div>
-                  <div className="mt-4">
-                    <a href="/help" className="text-sm underline">Learn more</a>
-                  </div>
+                  {/* Removed "Learn more" link for this section as requested */}
                 </div>
               </div>
             </div>

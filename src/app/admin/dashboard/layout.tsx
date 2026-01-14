@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { cookies } from "next/headers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 import { AppSidebar } from "@/app/admin/dashboard/sidebar/app-sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +24,26 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
     getPreference("sidebar_variant", SIDEBAR_VARIANT_VALUES, "inset"),
     getPreference("sidebar_collapsible", SIDEBAR_COLLAPSIBLE_VALUES, "icon"),
   ]);
+
+  const session = await getServerSession(authOptions);
+  type SessionUser = {
+    id?: string;
+    role?: string | null;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+
+  const sessionUser = session?.user as SessionUser | undefined;
+  const currentUser = sessionUser
+    ? {
+        id: sessionUser.id ?? "",
+        name: sessionUser.name ?? "",
+        email: sessionUser.email ?? "",
+        avatar: sessionUser.image ?? "",
+        role: sessionUser.role ?? "user",
+      }
+    : null;
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
@@ -50,7 +72,7 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
             <div className="flex items-center gap-2">
               <LayoutControls />
               <ThemeSwitcher />
-              <AccountSwitcher users={users} />
+              {currentUser ? <AccountSwitcher users={[currentUser]} /> : null}
             </div>
           </div>
         </header>

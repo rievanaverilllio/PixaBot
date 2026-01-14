@@ -5,8 +5,8 @@ import { Star } from "lucide-react";
 
 export default function Testimonials() {
   const quotes = [
-    { name: "Acme Inc.", title: "Head of Product", text: "PixaBot reduced our support load by 40% and accelerated content creation across channels.", avatar: "/media/logos/acme.png" },
-    { name: "Bright Studio", title: "Creative Director", text: "Image generation integrated directly into our workflow — we shipped creative assets faster.", avatar: "/media/logos/bright.png" },
+    { name: "Acme Inc.", title: "Head of Product", text: "PixaBot reduced our support load by 40% and accelerated content creation across channels.", avatar: "/media/mock.png" },
+    { name: "Bright Studio", title: "Creative Director", text: "Image generation integrated directly into our workflow — we shipped creative assets faster.", avatar: "/media/partner.png" },
   ];
 
   return (
