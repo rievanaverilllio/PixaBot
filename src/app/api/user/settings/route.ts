@@ -36,11 +36,39 @@ export async function GET() {
     select: { createdAt: true },
   });
 
+  const payments = await prisma.payment.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      status: true,
+      provider: true,
+      amountCents: true,
+      currency: true,
+      createdAt: true,
+      updatedAt: true,
+      invoice: {
+        select: {
+          id: true,
+          number: true,
+          status: true,
+          amountCents: true,
+          currency: true,
+          issuedAt: true,
+          paidAt: true,
+          pdfUrl: true,
+        },
+      },
+    },
+  });
+
   return NextResponse.json({
     profile: {
       name: user.name ?? "",
       email: user.email ?? "",
       image: user.image ?? null,
+      role: user.role ?? "user",
     },
     settings: {
       twoFaEnabled: user.settings?.twoFaEnabled ?? false,
@@ -52,6 +80,7 @@ export async function GET() {
       tokenBalance: user.wallet?.balance ?? 0,
       lastTopupAt: lastTopup?.createdAt ?? null,
     },
+    payments,
   });
 }
 

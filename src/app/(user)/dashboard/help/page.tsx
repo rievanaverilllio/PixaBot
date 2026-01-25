@@ -37,7 +37,7 @@ export default function HelpPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Link href="/buy-token">
+                <Link href="/dashboard/buy-token">
                   <Button>Beli Token</Button>
                 </Link>
                 <Link href="/api-keys">
@@ -61,7 +61,7 @@ export default function HelpPage() {
                 <h4 className="text-lg font-semibold">Langkah cepat</h4>
                 <ol className="mt-3 space-y-3 list-decimal list-inside text-sm">
                   <li>Pendaftaran & verifikasi akun.</li>
-                  <li>Beli token di halaman <Link href="/buy-token" className="text-primary hover:underline">Beli Token</Link>.</li>
+                  <li>Beli token di halaman <Link href="/dashboard/buy-token" className="text-primary hover:underline">Beli Token</Link>.</li>
                   <li>Top-up / kelola metode pembayaran di <Link href="/payments" className="text-primary hover:underline">Pembayaran</Link>.</li>
                   <li>Gunakan chat di halaman utama untuk berinteraksi dengan model.</li>
                   <li>Gunakan API key di <Link href="/api-keys" className="text-primary hover:underline">API & Kunci</Link> untuk integrasi.</li>

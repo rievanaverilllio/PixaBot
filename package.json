@@ -6,12 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "db:seed": "prisma db seed",
     "lint": "biome lint",
     "format": "biome format --write",
     "check": "biome check",
     "check:fix": "biome check --write",
     "prepare": "husky",
     "generate:presets": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/scripts/generate-theme-presets.ts"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx}": [

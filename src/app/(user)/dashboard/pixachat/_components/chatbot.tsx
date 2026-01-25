@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Loader2, Send, Trash2, Image as ImageIcon, Check, MoreHorizontal, Key } from "lucide-react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -40,6 +41,28 @@ type ChatMessage = {
 
 type ChatApiResponse = {
   reply: string;
+  quota?: {
+    kind: "chat" | "image";
+    plan: string;
+    used: number;
+    limit: number | null;
+    remaining: number | null;
+    tokenBalance: number;
+    tokenCost: number;
+  };
+};
+
+type ChatApiError = {
+  error?: string;
+  code?: string;
+  quota?: ChatApiResponse["quota"];
+};
+
+type ImageApiResponse = {
+  image?: string;
+  url?: string;
+  error?: string;
+  quota?: ChatApiResponse["quota"];
 };
 
 function createId() {
@@ -70,6 +93,9 @@ export function ChatBot() {
   const [customApiKey, setCustomApiKey] = React.useState<string>("");
   const [apiKeyModalOpen, setApiKeyModalOpen] = React.useState(false);
   const [apiKeyDraft, setApiKeyDraft] = React.useState("");
+
+  const [quota, setQuota] = React.useState<ChatApiResponse["quota"] | null>(null);
+  const [blocked, setBlocked] = React.useState<{ code: string; message: string } | null>(null);
 
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -135,7 +161,7 @@ export function ChatBot() {
 
   const sendMessage = React.useCallback(async () => {
     const text = sanitizeInput(input);
-    if (!text || isSending) return;
+    if (!text || isSending || blocked) return;
 
     const userMsg: ChatMessage = {
       id: createId(),
@@ -161,11 +187,22 @@ export function ChatBot() {
       });
 
       if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        throw new Error(errText || `Request failed: ${res.status}`);
+        const json = (await res.json().catch(() => null)) as ChatApiError | null;
+        const message = json?.error || `Request failed: ${res.status}`;
+        const code = json?.code || String(res.status);
+        if (res.status === 401) {
+          setBlocked({ code: "UNAUTHORIZED", message: "Sesi kamu habis. Silakan login ulang." });
+        }
+        if (res.status === 402) {
+          setQuota(json?.quota ?? null);
+          setBlocked({ code, message });
+        }
+        throw new Error(message);
       }
 
       const data = (await res.json()) as ChatApiResponse;
+      if (data.quota) setQuota(data.quota);
+      setBlocked(null);
 
       const assistantMsg: ChatMessage = {
         id: createId(),
@@ -175,18 +212,19 @@ export function ChatBot() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Maaf, terjadi error saat mengirim pesan. Coba lagi ya.";
       const assistantMsg: ChatMessage = {
         id: createId(),
         role: "assistant",
-        content: "Maaf, terjadi error saat mengirim pesan. Coba lagi ya.",
+        content: msg || "Maaf, terjadi error saat mengirim pesan. Coba lagi ya.",
         createdAt: Date.now(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, messages, customApiKey]);
+  }, [input, isSending, messages, customApiKey, blocked]);
 
   const generateImage = React.useCallback(async () => {
     let prompt = sanitizeInput(input);
@@ -223,20 +261,35 @@ export function ChatBot() {
 
       const res = await fetch("/api/pixachat/image", {
         method: "POST",
+        cache: "no-store",
         headers,
         body: JSON.stringify({ prompt }),
       });
 
-      if (!res.ok) throw new Error(`Image API ${res.status}`);
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as ChatApiError | null;
+        const message = json?.error || `Image API ${res.status}`;
+        const code = json?.code || String(res.status);
+        if (res.status === 401) {
+          setBlocked({ code: "UNAUTHORIZED", message: "Sesi kamu habis. Silakan login ulang." });
+        }
+        if (res.status === 402) {
+          setQuota(json?.quota ?? null);
+          setBlocked({ code, message });
+        }
+        throw new Error(message);
+      }
 
-      const data = await res.json();
+      const data = (await res.json().catch(() => null)) as ImageApiResponse | null;
+      if (data?.quota) setQuota(data.quota);
+      setBlocked(null);
 
       const finalMsg: ChatMessage = {
         id: createId(),
         role: "assistant",
-        content: data.error ? "Gagal membuat gambar." : "Berikut gambar yang dihasilkan.",
+        content: data?.error ? "Gagal membuat gambar." : "Berikut gambar yang dihasilkan.",
         createdAt: Date.now(),
-        imageUrl: data.image ?? data.url ?? undefined,
+        imageUrl: data?.image ?? data?.url ?? undefined,
       };
 
       setMessages((prev) => prev.map((m) => (m.id === loadingId ? finalMsg : m)));
@@ -250,7 +303,9 @@ export function ChatBot() {
       setMessages((prev) => prev.map((m) => (m.id === loadingId ? errMsg : m)));
     } finally {
       setIsGeneratingImage(false);
+      // reset input and disable image tool so subsequent Enter sends chat
       setInput("");
+      setImageToolEnabled(false);
     }
   }, [input, customApiKey]);
 
@@ -269,6 +324,7 @@ export function ChatBot() {
   );
 
   const clearChat = React.useCallback(() => {
+    setBlocked(null);
     setMessages([
       {
         id: createId(),
@@ -315,6 +371,29 @@ export function ChatBot() {
       </Dialog>
 
       <CardContent className="flex h-full flex-col gap-4">
+        {blocked ? (
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+            <div className="font-medium">Akses chat dibatasi</div>
+            <div className="text-muted-foreground mt-1">{blocked.message}</div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Link href="/dashboard/buy-token">
+                <Button size="sm">Beli Paket / Top Up</Button>
+              </Link>
+              <Button size="sm" variant="outline" onClick={() => setBlocked(null)}>
+                Coba lagi
+              </Button>
+              {quota && quota.limit !== null ? (
+                <div className="text-xs text-muted-foreground ml-auto">
+                  {quota.kind === "image" ? "Image" : "Chat"} quota: {quota.used}/{quota.limit}
+                </div>
+              ) : quota ? (
+                <div className="text-xs text-muted-foreground ml-auto">
+                  Token: {quota.tokenBalance.toLocaleString("id-ID")}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <ScrollArea className="h-[min(68vh,800px)] rounded-md border-0 overscroll-contain">
           <div className="flex flex-col gap-3 p-4">
             {messages.map((m) => (
@@ -327,14 +406,14 @@ export function ChatBot() {
                     : "bg-muted text-foreground"
                 )}
               >
-                <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                <div className="whitespace-pre-wrap wrap-break-word">{m.content}</div>
                 {m.imageUrl ? (
-                  <div className="mt-2">
-                    <a href={m.imageUrl} target="_blank" rel="noopener noreferrer">
+                  <div className="mt-2 inline-block">
+                    <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-block">
                       <img
                         src={m.imageUrl}
                         alt="generated"
-                        className="max-w-[360px] max-h-[360px] w-auto h-auto rounded-md shadow-sm object-contain"
+                        className="block max-w-[360px] max-h-[360px] w-auto h-auto rounded-md shadow-sm object-contain"
                       />
                     </a>
                     <div className="mt-1 text-xs text-muted-foreground">
@@ -368,7 +447,7 @@ export function ChatBot() {
               onKeyDown={onKeyDown}
               placeholder="Tulis pesan… (Enter untuk kirim, Shift+Enter untuk baris baru)"
               className="h-4 pr-12"
-              disabled={isSending}
+              disabled={isSending || Boolean(blocked)}
             />
 
             <div className="absolute right-2 top-2">
@@ -410,7 +489,7 @@ export function ChatBot() {
                   await sendMessage();
                 }
               }}
-              disabled={isSending || isGeneratingImage || !sanitizeInput(input)}
+              disabled={isSending || isGeneratingImage || !sanitizeInput(input) || Boolean(blocked)}
             >
               {isGeneratingImage ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Send className="mr-2 size-4" />}
               Kirim

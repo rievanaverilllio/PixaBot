@@ -14,9 +14,28 @@ import { Label } from "@/components/ui/label";
 import { Edit2, CreditCard, Key, ShieldCheck, Trash2, User, Mail, Zap } from "lucide-react";
 
 type SettingsResponse = {
-  profile: { name: string; email: string; image: string | null };
+  profile: { name: string; email: string; image: string | null; role: string };
   settings: { twoFaEnabled: boolean; notificationsEnabled: boolean; language: string | null; timezone: string | null };
   billing: { tokenBalance: number; lastTopupAt: string | null };
+  payments: Array<{
+    id: number;
+    status: string;
+    provider: string | null;
+    amountCents: number;
+    currency: string;
+    createdAt: string;
+    updatedAt: string;
+    invoice: null | {
+      id: number;
+      number: string;
+      status: string;
+      amountCents: number;
+      currency: string;
+      issuedAt: string;
+      paidAt: string | null;
+      pdfUrl: string | null;
+    };
+  }>;
 };
 
 export default function SettingsPage() {
@@ -29,6 +48,7 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [role, setRole] = useState<string>("user");
   const [twoFa, setTwoFa] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [language, setLanguage] = useState<string>("");
@@ -36,6 +56,7 @@ export default function SettingsPage() {
 
   const [tokenBalance, setTokenBalance] = useState<number>(0);
   const [lastTopupAt, setLastTopupAt] = useState<string | null>(null);
+  const [payments, setPayments] = useState<SettingsResponse["payments"]>([]);
 
   const initials = useMemo(() => {
     const trimmed = (name ?? "").trim();
@@ -64,12 +85,14 @@ export default function SettingsPage() {
         setName(data.profile.name ?? "");
         setEmail(data.profile.email ?? "");
         setAvatar(data.profile.image ?? null);
+        setRole(data.profile.role ?? "user");
         setTwoFa(Boolean(data.settings.twoFaEnabled));
         setNotifications(Boolean(data.settings.notificationsEnabled));
         setLanguage(data.settings.language ?? "");
         setTimezone(data.settings.timezone ?? "");
         setTokenBalance(Number(data.billing.tokenBalance ?? 0));
         setLastTopupAt(data.billing.lastTopupAt ?? null);
+        setPayments(Array.isArray(data.payments) ? data.payments : []);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load settings");
       } finally {
@@ -216,6 +239,9 @@ export default function SettingsPage() {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
+                    <div className="text-sm text-muted-foreground">Paket</div>
+                    <div className="text-sm font-medium capitalize mt-1">{role || "user"}</div>
+                    <div className="h-3" />
                     <div className="text-sm text-muted-foreground">Saldo Token</div>
                     <div className="text-2xl font-semibold mt-1 tabular-nums">{tokenBalance.toLocaleString("id-ID")}</div>
                     <div className="text-sm text-muted-foreground mt-1">
@@ -231,6 +257,51 @@ export default function SettingsPage() {
                     </Link>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Riwayat Pembayaran</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {payments.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">Belum ada pembayaran.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {payments.slice(0, 8).map((p) => {
+                      const amount = (p.amountCents ?? 0) / 100;
+                      const invoiceNo = p.invoice?.number ?? "-";
+                      return (
+                        <div key={p.id} className="flex items-center justify-between rounded-md border p-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{invoiceNo}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(p.createdAt).toLocaleString("id-ID")} · {String(p.provider ?? "-")}
+                            </div>
+                            <div className="text-xs text-muted-foreground capitalize">Status: {p.status}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-semibold">${amount.toFixed(2)}</div>
+                            {p.invoice?.pdfUrl ? (
+                              <Link href={p.invoice.pdfUrl} target="_blank" className="text-xs underline text-muted-foreground">
+                                Invoice
+                              </Link>
+                            ) : (
+                              <div className="text-xs text-muted-foreground">&nbsp;</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="flex justify-end">
+                      <Link href="/dashboard/payments">
+                        <Button variant="outline" size="sm">Lihat semua</Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

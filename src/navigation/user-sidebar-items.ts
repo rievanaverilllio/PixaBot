@@ -55,11 +55,11 @@ export const sidebarItems: NavGroup[] = [
         url: "/dashboard/pixachat",
         icon: LayoutDashboard,
       },
-      {
-        title: "Token Dashboard",
-        url: "/dashboard/token-dashboard",
-        icon: Banknote,
-      },
+      // {
+      //   title: "Token Dashboard",
+      //   url: "/dashboard/token-dashboard",
+      //   icon: Banknote,
+      // },
     ],
   },
   {
