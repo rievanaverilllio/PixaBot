@@ -143,45 +143,67 @@ export default function SettingsPage() {
               <Button variant="outline">Kelola API</Button>
             </Link>
             <Button onClick={saveAll} disabled={isLoading || isSaving}>
-              {isSaving ? "Saving..." : "Save All"}
+              {isSaving ? "Menyimpan..." : "Simpan Semua"}
             </Button>
           </div>
         </header>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Profile Card */}
-          <Card className="min-h-55">
-            <CardHeader>
-              <CardTitle>Profil</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center text-center">
-                <Avatar className="w-24 h-24">
-                  <AvatarImage src={avatar || undefined} alt={name || "avatar"} />
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <div className="mt-3 w-full">
-                  <Label>Nama Lengkap</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-2" />
-                  <Label className="mt-3">Email</Label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2" />
+          <div className="space-y-6">
+            {/* Profile Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profil</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center text-center">
+                  <Avatar className="w-24 h-24">
+                    <AvatarImage src={avatar || undefined} alt={name || "avatar"} />
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="mt-3 w-full">
+                    <Label>Nama Lengkap</Label>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 w-full" />
+                    <Label className="mt-3">Email</Label>
+                    <Input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2 w-full" />
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => toast.info("Gunakan tombol 'Simpan Semua' untuk menyimpan perubahan.")}
+                    >
+                      <Edit2 className="mr-2" />Ubah Profil
+                    </Button>
+                    <Button
+                      onClick={() => toast.info("Unggah avatar belum diaktifkan.")}
+                    >
+                      Unggah Avatar
+                    </Button>
+                  </div>
                 </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => toast.message("Ubah Profil", { description: "Gunakan tombol Save All untuk menyimpan perubahan." })}
-                  >
-                    <Edit2 className="mr-2" />Ubah Profil
-                  </Button>
-                  <Button
-                    onClick={() => toast.message("Unggah Avatar", { description: "Belum diaktifkan. Nanti bisa kita tambah upload ke storage." })}
-                  >
-                    Unggah Avatar
-                  </Button>
+              </CardContent>
+            </Card>
+
+            {/* Preferensi & Informasi Akun (moved under Profile) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Preferensi & Informasi Akun</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Bahasa</Label>
+                    <Input placeholder="Bahasa (ID)" className="mt-2 w-full" value={language} onChange={(e) => setLanguage(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Zona Waktu</Label>
+                      <Input placeholder="Asia/Jakarta" className="mt-2 w-full" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="mt-4 text-sm text-muted-foreground">Perubahan preferensi akan diterapkan segera setelah Anda menyimpan.</div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Security & Notifications */}
           <div className="md:col-span-1 space-y-6">
@@ -305,69 +327,11 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Connected Apps</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <User />
-                      <div>
-                        <div className="font-medium">GitHub</div>
-                        <div className="text-sm text-muted-foreground">Terhubung sejak 12 Nov 2025</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline">Manage</Button>
-                      <Button variant="destructive"><Trash2 /></Button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Zap />
-                      <div>
-                        <div className="font-medium">Slack</div>
-                        <div className="text-sm text-muted-foreground">Terhubung sejak 20 Okt 2025</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline">Manage</Button>
-                      <Button variant="destructive"><Trash2 /></Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="md:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferensi & Informasi Akun</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label>Bahasa</Label>
-                    <Input placeholder="Bahasa (ID)" className="mt-2" value={language} onChange={(e) => setLanguage(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label>Zona Waktu</Label>
-                    <Input placeholder="Asia/Jakarta" className="mt-2" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-                  </div>
-                </div>
-                <div className="mt-4 text-sm text-muted-foreground">Perubahan preferensi akan diterapkan segera setelah Anda menyimpan.</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Danger Zone removed per user request */}
-        </div>
+        
       </div>
     </div>
   );

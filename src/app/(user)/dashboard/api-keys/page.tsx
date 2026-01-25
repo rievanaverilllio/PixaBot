@@ -89,6 +89,21 @@ export default function ApiKeysPage() {
     }
   }
 
+  async function rotateAndCopy(id: number) {
+    try {
+      const res = await fetch(`/api/user/api-keys/${id}/rotate`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to rotate key");
+      const json = await res.json();
+      const secret = (json as any)?.secret;
+      if (!secret) throw new Error("No secret returned");
+      await navigator.clipboard.writeText(secret);
+      toast.success("New key generated and copied to clipboard");
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Rotate failed");
+    }
+  }
+
   const curlExample = useMemo(
     () =>
       `curl -X POST "https://api.example.com/v1/chat" \
@@ -166,11 +181,11 @@ export default function ApiKeysPage() {
                     <div className="font-mono text-sm text-muted-foreground px-3 py-1 rounded bg-muted/10">{k.prefix}</div>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" onClick={() => copy(k.prefix)}>
+                        <Button variant="outline" size="sm" onClick={() => rotateAndCopy(k.id)}>
                           <Clipboard className="mr-2" />Copy
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Copy prefix (full key hanya muncul saat dibuat)</TooltipContent>
+                      <TooltipContent>Rotate key and copy full secret</TooltipContent>
                     </Tooltip>
                     <Dialog open={showRevoke === String(k.id)} onOpenChange={(open) => !open && setShowRevoke(null)}>
                       <DialogContent>

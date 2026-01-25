@@ -42,11 +42,11 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { packageId?: number; methodId?: string }
+    | { packageId?: number; methodId?: string | number }
     | null;
 
   const packageId = Number(body?.packageId);
-  const methodId = (body?.methodId ?? "card").toString();
+  const rawMethod = body?.methodId ?? "card";
 
   const selected = PACKAGES.find((p) => p.id === (packageId as PackageId));
   if (!selected) {
@@ -75,17 +75,30 @@ export async function POST(req: Request) {
       },
     });
 
+    // Resolve methodId: if caller passed a numeric payment method id, validate ownership
+    let paymentCreateData: any = {
+      userId,
+      invoiceId: invoice.id,
+      methodId: null,
+      provider: typeof rawMethod === "string" ? String(rawMethod) : null,
+      providerRef,
+      status: "pending",
+      amountCents: selected.priceCents,
+      currency: "USD",
+    };
+
+    if (typeof rawMethod === "number" || (typeof rawMethod === "string" && /^\d+$/.test(String(rawMethod)))) {
+      const methodIdInt = Number(rawMethod);
+      // ensure method belongs to user
+      const pm = await tx.paymentMethod.findFirst({ where: { id: methodIdInt, userId } });
+      if (pm) {
+        paymentCreateData.methodId = pm.id;
+        paymentCreateData.provider = pm.provider ?? paymentCreateData.provider;
+      }
+    }
+
     const payment = await tx.payment.create({
-      data: {
-        userId,
-        invoiceId: invoice.id,
-        methodId: null,
-        provider: methodId,
-        providerRef,
-        status: "pending",
-        amountCents: selected.priceCents,
-        currency: "USD",
-      },
+      data: paymentCreateData,
       select: {
         id: true,
         status: true,

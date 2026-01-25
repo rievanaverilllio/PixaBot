@@ -29,6 +29,14 @@ type InvoiceDto = {
   paidAt: string | null;
 };
 
+type TopupDto = {
+  id: number;
+  amount: number; // token amount
+  note: string | null;
+  metadata?: any;
+  createdAt: string;
+};
+
 function formatCurrency(n: number) {
   return `$${n.toFixed(2)}`;
 }
@@ -41,6 +49,8 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [usage, setUsage] = useState<UsageEventDto[]>([]);
   const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
+  const [topups, setTopups] = useState<TopupDto[]>([]);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +65,8 @@ export default function HistoryPage() {
         if (cancelled) return;
         setUsage(Array.isArray(json?.usageEvents) ? json!.usageEvents : []);
         setInvoices(Array.isArray(json?.invoices) ? json!.invoices : []);
+        setTopups(Array.isArray((json as any)?.topups) ? (json as any).topups : []);
+        setWalletBalance(typeof (json as any)?.walletBalance === "number" ? (json as any).walletBalance : 0);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Gagal memuat history");
       } finally {
@@ -76,12 +88,37 @@ export default function HistoryPage() {
     });
   }, [query, filter]);
 
+  // Combine usage events and topups when filter is 'all' so the table shows everything.
+  const displayed = useMemo(() => {
+    // Map topups to a unified shape compatible with usage rows
+    const topupRows = topups.map((t) => ({
+      id: -t.id, // ensure unique key and sortability; negative to avoid collision with usage ids
+      kind: "topup" as const,
+      action: t.note ?? "Top-up",
+      tokens: t.amount,
+      createdAt: t.createdAt,
+    }));
+
+    if (filter === "all") {
+      // Merge and sort by createdAt desc
+      const merged = [...topupRows, ...usage].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      // Apply query filter on action if present
+      return merged.filter((r) => {
+        if (!query) return true;
+        return (r.action ?? r.kind).toLowerCase().includes(query.toLowerCase());
+      });
+    }
+
+    return filtered;
+  }, [filter, topups, usage, filtered, query]);
+
   const totals = useMemo(() => {
-    const tokens = filtered.reduce((s, r) => s + r.tokens, 0);
-    const calls = filtered.length;
+    const tokens = displayed.reduce((s, r) => s + (r.tokens ?? 0), 0);
+    const calls = displayed.filter((d) => d.kind !== "topup").length;
     const invoiceTotal = invoices.reduce((s, i) => s + (i.amountCents ?? 0) / 100, 0);
-    return { tokens, calls, invoiceTotal };
-  }, [filtered]);
+    const topupTotal = topups.reduce((s, t) => s + (t.amount ?? 0), 0);
+    return { tokens, calls, invoiceTotal, topupTotal, walletBalance };
+  }, [displayed, invoices, topups, walletBalance]);
 
   function exportCsv() {
     const rows = [
@@ -122,18 +159,22 @@ export default function HistoryPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 rounded-md border">
                     <div className="text-xs text-muted-foreground">Total Token (filter)</div>
                     <div className="text-2xl font-semibold">{totals.tokens}</div>
                   </div>
-                  <div>
+                  <div className="p-3 rounded-md border">
                     <div className="text-xs text-muted-foreground">Total Panggilan</div>
                     <div className="text-2xl font-semibold">{totals.calls}</div>
                   </div>
-                  <div>
+                  <div className="p-3 rounded-md border">
                     <div className="text-xs text-muted-foreground">Total Invoice</div>
                     <div className="text-2xl font-semibold">{formatCurrency(totals.invoiceTotal)}</div>
+                  </div>
+                  <div className="p-3 rounded-md border">
+                    <div className="text-xs text-muted-foreground">Sisa Token</div>
+                    <div className="text-2xl font-semibold">{totals.walletBalance}</div>
                   </div>
                 </div>
               </div>
@@ -211,12 +252,12 @@ export default function HistoryPage() {
                 <tbody>
                   {isLoading ? (
                     <tr><td className="py-3 text-sm text-muted-foreground" colSpan={5}>Memuat...</td></tr>
-                  ) : filtered.length === 0 ? (
+                  ) : displayed.length === 0 ? (
                     <tr><td className="py-3 text-sm text-muted-foreground" colSpan={5}>Tidak ada data.</td></tr>
-                  ) : filtered.map((u) => (
+                  ) : displayed.map((u) => (
                     <tr key={u.id} className="border-b hover:bg-muted/20">
                       <td className="py-3 text-sm">{new Date(u.createdAt).toLocaleString("id-ID")}</td>
-                      <td className="py-3">{u.action ?? (u.kind === "image" ? "Image generation" : u.kind === "chat" ? "Chat" : "API")}</td>
+                      <td className="py-3">{u.action ?? (u.kind === "image" ? "Image generation" : u.kind === "chat" ? "Chat" : u.kind === "topup" ? "Top-up" : "API")}</td>
                       <td className="py-3 text-sm text-muted-foreground">{u.kind}</td>
                       <td className="py-3 tabular-nums">{u.tokens}</td>
                       <td className="py-3">
@@ -228,6 +269,35 @@ export default function HistoryPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Riwayat Top-up</CardTitle>
+              <div className="text-sm text-muted-foreground">Riwayat top-up token</div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3">
+              {topups.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Belum ada top-up.</div>
+              ) : (
+                topups.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between rounded-md border p-4">
+                    <div>
+                      <div className="font-medium">Top-up {t.note ?? "(manual)"}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(t.createdAt).toLocaleDateString("id-ID")}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="tabular-nums">{t.amount}</div>
+                      <div className="text-xs text-muted-foreground">tokens</div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

@@ -70,5 +70,23 @@ export async function GET(req: Request) {
     }),
   ]);
 
-  return NextResponse.json({ usageEvents, invoices, rangeDays: days });
+  // Also include token top-up transactions so frontend can show top-up history
+  const topups = await prisma.tokenTransaction.findMany({
+    where: { userId, type: "topup" },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      amount: true,
+      note: true,
+      metadata: true,
+      createdAt: true,
+    },
+  });
+
+  // Get wallet balance for display as remaining tokens
+  const wallet = await prisma.tokenWallet.findUnique({ where: { userId } });
+  const walletBalance = wallet?.balance ?? 0;
+
+  return NextResponse.json({ usageEvents, invoices, topups, walletBalance, rangeDays: days });
 }

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Banknote, Check, Star, CreditCard, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Banknote, Check, Star, CreditCard, Zap, BadgeCheck } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,11 +36,8 @@ const packages = [
   },
 ];
 
-const methods = [
-  { id: "card", label: "Mastercard", icon: CreditCard },
-  { id: "quick", label: "Instant", icon: Zap },
-  { id: "bank", label: "Transfer", icon: Banknote },
-];
+type MethodDto = { id: number; label: string; type: string; last4?: string | null; isPrimary?: boolean; provider?: string | null };
+
 
 type CheckoutResponse = {
   checkout: {
@@ -53,10 +50,34 @@ type CheckoutResponse = {
 export default function BuyTokenPage() {
   const router = useRouter();
   const [selected, setSelected] = useState(packages[1]);
-  const [payMethod, setPayMethod] = useState(methods[0].id);
+  const [payMethod, setPayMethod] = useState<number | null>(null);
+  const [methods, setMethods] = useState<MethodDto[]>([]);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [checkout, setCheckout] = useState<CheckoutResponse["checkout"] | null>(null);
+
+  // Load payment methods from backend
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/billing/methods", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json().catch(() => null)) as { methods?: MethodDto[] } | null;
+        if (!json?.methods) return;
+        if (cancelled) return;
+        setMethods(json.methods);
+        // prefer primary method if present
+        const primary = json.methods.find((m) => m.isPrimary) ?? json.methods[0];
+        setPayMethod(primary?.id ?? null);
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleCreateCheckout() {
     if (isCheckingOut) return;
@@ -135,7 +156,7 @@ export default function BuyTokenPage() {
                     {p.recommended ? <Badge>Recommended</Badge> : null}
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col h-full">
+                <CardContent className="flex flex-col">
                   <div>
                     <div className="text-3xl font-extrabold">${p.price}</div>
                     <div className="text-sm text-muted-foreground">One-time · Tokens added instantly</div>
@@ -175,16 +196,27 @@ export default function BuyTokenPage() {
 
                               <div className="mt-4">
                                 <div className="text-sm text-muted-foreground">Pilih metode pembayaran</div>
-                                <div className="mt-2 grid gap-2 md:grid-cols-3">
-                                  {methods.map((m) => (
-                                    <Button
-                                      key={m.id}
-                                      variant={payMethod === m.id ? undefined : "outline"}
-                                      onClick={() => setPayMethod(m.id)}
-                                    >
-                                      <m.icon className="mr-2 h-4 w-4" /> {m.label}
-                                    </Button>
-                                  ))}
+                                <div className="mt-2 flex flex-col gap-2">
+                                  {methods.length === 0 ? (
+                                    <div className="text-sm text-muted-foreground">No payment methods</div>
+                                  ) : (
+                                    methods.map((m) => (
+                                        <Button
+                                          key={m.id}
+                                          className="w-full text-left"
+                                          variant={payMethod === m.id ? undefined : "outline"}
+                                          onClick={() => setPayMethod(m.id)}
+                                        >
+                                          <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center gap-2">
+                                              <div>{m.label}</div>
+                                              {m.isPrimary ? <BadgeCheck className="h-4 w-4 text-current" /> : null}
+                                            </div>
+                                            {m.last4 ? <div className="text-xs text-muted-foreground">**** {m.last4}</div> : null}
+                                          </div>
+                                        </Button>
+                                    ))
+                                  )}
                                 </div>
                               </div>
 
